@@ -4,11 +4,15 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
 import { Menu, MenuItem, HoveredLink } from "@/components/ui/navbar-menu";
 import { cn } from "@/lib/utils";
+import { LoaderOne } from "@/components/ui/loader";
+import { IconSquareRoundedX } from "@tabler/icons-react";
+import { LogoButton } from "@/components/ui/logo-button";
 
 const OcrPage: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [ocrResult, setOcrResult] = useState<string>("");
   const [active, setActive] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleFileUpload = (files: File[]) => {
     if (file) {
@@ -31,14 +35,18 @@ const OcrPage: React.FC = () => {
 
   const handleScan = async () => {
     if (!file) return;
-    const formData = new FormData();
-    formData.append("file", file);
+
+    setLoading(true);
 
     try {
+      const formData = new FormData();
+      formData.append("file", file);
+
       const response = await fetch("http://127.0.0.1:5000/scan", {
         method: "POST",
         body: formData,
       });
+
       if (!response.ok) {
         let msg = "Failed to scan file";
         try {
@@ -47,11 +55,15 @@ const OcrPage: React.FC = () => {
         } catch {}
         throw new Error(msg);
       }
+
       const data = await response.json();
+
       setOcrResult(data.raw_text);
+      setLoading(false);
     } catch (error) {
       console.error("Error during scan:", error);
       alert((error as Error).message || "Error scanning file");
+      setLoading(false);
     }
   };
 
@@ -73,41 +85,47 @@ const OcrPage: React.FC = () => {
   return (
     <div
       className="relative min-h-screen flex flex-col items-center py-12 px-4"
-      style={{ backgroundColor: "#2d2d2d" }} // Dark grey page background
+      style={{ backgroundColor: "#1c1c1c" }}
     >
       {/* Dot Background */}
       <div
         className={cn(
           "absolute inset-0",
           "[background-size:20px_20px]",
-          "[background-image:radial-gradient(#3f3f3f_1px,transparent_1px)]"
+          "[background-image:radial-gradient(#3a3a3a_1px,transparent_1px)]"
         )}
       />
 
-      {/* Faded radial effect */}
-      <div
-        className="pointer-events-none absolute inset-0 flex items-center justify-center"
-        style={{
-          backgroundColor: "#2d2d2d",
-          maskImage: "radial-gradient(ellipse at center, transparent 20%, black)",
-        }}
-      ></div>
+      {/* Loader Overlay (Dark Theme, basic LoaderOne) */}
+      {loading && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm z-[110]">
+          
 
-      {/* ✅ Navbar shifted to top-right */}
+          <LoaderOne />
+          <button
+            className="absolute top-4 right-4 text-gray-200 z-[120]"
+            onClick={() => setLoading(false)}
+          >
+            <IconSquareRoundedX className="h-10 w-10" />
+          </button>
+        </div>
+      )}
+
+      {/* Navbar */}
       <div className="fixed top-3 right-6 z-50">
         <Menu setActive={setActive}>
           <MenuItem setActive={setActive} active={active} item="Asset Management">
             <div className="flex flex-col space-y-2 text-sm p-2">
-              <HoveredLink href="/dashboard/assets">All Assets</HoveredLink>
+              <HoveredLink href="/assets">All Assets</HoveredLink>
               <HoveredLink href="/ocr">Add Assets</HoveredLink>
-              <HoveredLink href="/dashboard/bulk-import">Bulk Import</HoveredLink>
+              
             </div>
           </MenuItem>
 
           <MenuItem setActive={setActive} active={active} item="Lab Management">
             <div className="flex flex-col space-y-2 text-sm p-2">
-              <HoveredLink href="/dashboard/lab-floor-plans">Lab Floor Plans</HoveredLink>
-              <HoveredLink href="/dashboard/lab-configuration">Lab Configuration</HoveredLink>
+              <HoveredLink href="/lab-plan">Lab Floor Plans</HoveredLink>
+              <HoveredLink href="/lab-configuration">Lab Configuration</HoveredLink>
             </div>
           </MenuItem>
 
@@ -121,7 +139,7 @@ const OcrPage: React.FC = () => {
 
           <MenuItem setActive={setActive} active={active} item="Analytics">
             <div className="flex flex-col space-y-2 text-sm p-2">
-              <HoveredLink href="/dashboard/reports">Reports</HoveredLink>
+              <HoveredLink href="/reports">Reports</HoveredLink>
             </div>
           </MenuItem>
         </Menu>
@@ -129,21 +147,20 @@ const OcrPage: React.FC = () => {
 
       <h1
         className="text-3xl font-bold mb-8 relative z-20 mt-16"
-        style={{ color: "#f3f4f6" }} // Light text on dark background
+        style={{ color: "#f3f4f6" }}
       >
         OCR Scanner
       </h1>
 
       {/* File Upload */}
       <div className="w-full max-w-4xl mb-6 relative z-20">
+        <LogoButton />
         <div
-          className="border border-dashed rounded-lg p-6 border-gray-300 shadow-md"
-          style={{ backgroundColor: "#f3f4f6", color: "#111827" }}
+          className="border border-dashed rounded-lg p-6 border-gray-600 shadow-md"
+          style={{ backgroundColor: "#2c2c2c", color: "#f3f4f6" }}
         >
           {!file ? (
-            <div>
-              <FileUpload onChange={handleFileUpload} />
-            </div>
+            <FileUpload onChange={handleFileUpload} />
           ) : (
             <div className="flex items-center justify-between p-4">
               <div className="flex items-center gap-4">
@@ -151,8 +168,10 @@ const OcrPage: React.FC = () => {
                   <span className="text-white font-bold text-sm">PDF</span>
                 </div>
                 <div>
-                  <p className="text-gray-900 font-medium">{file.name}</p>
-                  <p className="text-gray-600 text-sm">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                  <p className="text-gray-200 font-medium">{file.name}</p>
+                  <p className="text-gray-400 text-sm">
+                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
                 </div>
               </div>
               <HoverBorderGradient
@@ -169,7 +188,7 @@ const OcrPage: React.FC = () => {
       </div>
 
       {/* Scan Button */}
-      {file && (
+      {file && !loading && (
         <div className="flex gap-4 mb-6 relative z-20">
           <HoverBorderGradient
             as="button"
@@ -183,12 +202,14 @@ const OcrPage: React.FC = () => {
       )}
 
       {/* OCR Result */}
-      {ocrResult && (
+      {ocrResult && !loading && (
         <div className="w-full max-w-4xl mb-6 relative z-20">
-          <h3 className="text-white text-lg font-semibold mb-3">OCR Result:</h3>
+          <h3 className="text-gray-200 text-lg font-semibold mb-3">
+            OCR Result:
+          </h3>
           <textarea
-            className="w-full h-64 p-4 rounded-lg border border-neutral-400"
-            style={{ backgroundColor: "#f3f4f6", color: "#111827" }} // Grey textarea
+            className="w-full h-64 p-4 rounded-lg border border-gray-600"
+            style={{ backgroundColor: "#2c2c2c", color: "#f3f4f6" }}
             value={ocrResult}
             onChange={(e) => setOcrResult(e.target.value)}
             placeholder="OCR extracted text will appear here..."
@@ -197,7 +218,7 @@ const OcrPage: React.FC = () => {
       )}
 
       {/* Save Button */}
-      {ocrResult && (
+      {ocrResult && !loading && (
         <div className="flex gap-4 relative z-20">
           <HoverBorderGradient
             as="button"
